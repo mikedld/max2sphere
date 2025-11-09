@@ -16,9 +16,9 @@ if(MSVC)
     add_compile_definitions(
         _CRT_SECURE_NO_WARNINGS
         _USE_MATH_DEFINES) # M_PI
-    add_compile_options(/W4 /wd4244 /wd4267 /wd4305)
+    add_compile_options(/WX /W4 /wd4244 /wd4267 /wd4305)
 else()
-    add_compile_options(-Wall -Wextra)
+    add_compile_options(-Werror -Wall -Wextra)
 endif()
 
 add_executable(max2sphere
