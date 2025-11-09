@@ -1,8 +1,14 @@
+#pragma once
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#ifdef _MSC_VER
+#include "wintime.h"
+#else
 #include <sys/time.h>
+#endif
 #include "bitmaplib.h"
 
 #define LEFT   0

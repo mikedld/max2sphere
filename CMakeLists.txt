@@ -13,6 +13,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
 if(MSVC)
+    add_compile_definitions(_USE_MATH_DEFINES) # M_PI
     add_compile_options(/W4)
 else()
     add_compile_options(-Wall -Wextra)
@@ -22,7 +23,9 @@ add_executable(max2sphere
     bitmaplib.c
     bitmaplib.h
     max2sphere.c
-    max2sphere.h)
+    max2sphere.h
+    $<$<BOOL:${MSVC}>:wintime.c>
+    $<$<BOOL:${MSVC}>:wintime.h>)
 
 check_library_exists(m sqrt "" HAVE_LIBM)
 if(HAVE_LIBM)
