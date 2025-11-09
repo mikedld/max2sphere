@@ -1,5 +1,3 @@
-#pragma once
-
 #include "bitmaplib.h"
 
 #include <math.h>
@@ -852,11 +850,10 @@ void Flip_Bitmap(BITMAP4* image, int width, int height, int mode)
 
 int IsTGA(char* fname)
 {
-    int i;
     char s[256];
 
     strcpy(s, fname);
-    for (i = 0; i < strlen(s); i++)
+    for (size_t i = 0; i < strlen(s); i++)
         if (s[i] >= 'A' && s[i] <= 'Z')
             s[i] += ('a' - 'A');
 
@@ -1098,11 +1095,10 @@ void TGA_MergeBytes(BITMAP4* pixel, unsigned char* p, int bytes)
 */
 int IsPPM(char* fname)
 {
-    int i;
     char s[256];
 
     strcpy(s, fname);
-    for (i = 0; i < strlen(s); i++)
+    for (size_t i = 0; i < strlen(s); i++)
         if (s[i] >= 'A' && s[i] <= 'Z')
             s[i] += ('a' - 'A');
 
@@ -1426,11 +1422,10 @@ int BMP_Read(FILE* fptr, BITMAP4* image, int* width, int* height)
 
 int IsRAW(char* fname)
 {
-    int i;
     char s[256];
 
     strcpy(s, fname);
-    for (i = 0; i < strlen(s); i++)
+    for (size_t i = 0; i < strlen(s); i++)
         if (s[i] >= 'A' && s[i] <= 'Z')
             s[i] += ('a' - 'A');
 
@@ -1555,11 +1550,10 @@ int Read_UInt(FILE* fptr, unsigned int* n, int swap)
 
 int IsJPEG(char* fname)
 {
-    int i;
     char s[256];
 
     strcpy(s, fname);
-    for (i = 0; i < strlen(s); i++)
+    for (size_t i = 0; i < strlen(s); i++)
         if (s[i] >= 'A' && s[i] <= 'Z')
             s[i] += ('a' - 'A');
 
@@ -1685,7 +1679,6 @@ int JPEG_Info(FILE* fptr, int* width, int* height, int* depth)
 */
 int JPEG_Read(FILE* fptr, BITMAP4* image, int* width, int* height)
 {
-    int i, j;
     int row_stride;
     struct jpeg_decompress_struct cinfo;
     struct jpeg_error_mgr jerr;
@@ -1713,10 +1706,10 @@ int JPEG_Read(FILE* fptr, BITMAP4* image, int* width, int* height)
     if ((buffer = malloc(row_stride * sizeof(JSAMPLE))) == NULL)
         return (2);
 
-    j = cinfo.output_height - 1;
+    JDIMENSION j = cinfo.output_height - 1;
     while (cinfo.output_scanline < cinfo.output_height) {
         jpeg_read_scanlines(&cinfo, &buffer, 1);
-        for (i = 0; i < cinfo.output_width; i++) {
+        for (JDIMENSION i = 0; i < cinfo.output_width; i++) {
             image[j * cinfo.output_width + i].r = buffer[3 * i];
             image[j * cinfo.output_width + i].g = buffer[3 * i + 1];
             image[j * cinfo.output_width + i].b = buffer[3 * i + 2];
@@ -1739,11 +1732,10 @@ int JPEG_Read(FILE* fptr, BITMAP4* image, int* width, int* height)
 
 int IsPNG(char* fname)
 {
-    int i;
     char s[256];
 
     strcpy(s, fname);
-    for (i = 0; i < strlen(s); i++)
+    for (size_t i = 0; i < strlen(s); i++)
         if (s[i] >= 'A' && s[i] <= 'Z')
             s[i] += ('a' - 'A');
 
@@ -1931,11 +1923,10 @@ int PNG_Write(FILE* fptr, BITMAP4* image, int width, int height, int flip)
 
 int IsTIFF(char* fname)
 {
-    int i;
     char s[256];
 
     strcpy(s, fname);
-    for (i = 0; i < strlen(s); i++)
+    for (size_t i = 0; i < strlen(s); i++)
         if (s[i] >= 'A' && s[i] <= 'Z')
             s[i] += ('a' - 'A');
 
@@ -1957,8 +1948,8 @@ int IsTIFF(char* fname)
 int TIFF_Write(char* fname, BITMAP4* image, int width, int height)
 {
     TIFF* tptr = NULL;
-    uint32 rowsperstrip = 0;
-    uint32 row;
+    uint32_t rowsperstrip = 0;
+    uint32_t row;
     int rows_to_write;
 
     if ((tptr = TIFFOpen(fname, "w")) == NULL)
@@ -1977,8 +1968,8 @@ int TIFF_Write(char* fname, BITMAP4* image, int width, int height)
     rowsperstrip = TIFFDefaultStripSize(tptr, rowsperstrip);
     TIFFSetField(tptr, TIFFTAG_ROWSPERSTRIP, rowsperstrip);
 
-    for (row = 0; row < height; row += rowsperstrip) {
-        if (row + rowsperstrip > height)
+    for (row = 0; row < (unsigned int)height; row += rowsperstrip) {
+        if (row + rowsperstrip > (unsigned int)height)
             rows_to_write = height - row;
         else
             rows_to_write = rowsperstrip;
@@ -1995,10 +1986,8 @@ int TIFF_Write(char* fname, BITMAP4* image, int width, int height)
 */
 int TIFF_Read16(char* fname, COLOUR16* image)
 {
-    int i, j;
-    int index;
     TIFF* tptr;
-    uint32 w, h, config, nsamples, sample = 0;
+    uint32_t w, h, config, nsamples, sample = 0;
     tdata_t raster;
 
     // Open file
@@ -2029,10 +2018,10 @@ int TIFF_Read16(char* fname, COLOUR16* image)
         return (FALSE);
     }
 
-    for (j = 0; j < h; j++) {
+    for (uint32_t j = 0; j < h; j++) {
         TIFFReadScanline(tptr, raster, j, sample);
-        for (i = 0; i < w; i++) {
-            index = (h - 1 - j) * w + i;
+        for (uint32_t i = 0; i < w; i++) {
+            uint32_t index = (h - 1 - j) * w + i;
             if (nsamples == 1) {
                 image[index].r = ((unsigned short*)raster)[i * nsamples + 0];
                 image[index].g = image[index].r;
@@ -2055,7 +2044,7 @@ int TIFF_Read16(char* fname, COLOUR16* image)
 int TIFF_Write16(char* fname, COLOUR16* image, int width, int height)
 {
     TIFF* tptr = NULL;
-    uint32 row, rowsperstrip = 1;
+    uint32_t row, rowsperstrip = 1;
 
     if ((tptr = TIFFOpen(fname, "w")) == NULL)
         return (FALSE);
@@ -2073,7 +2062,7 @@ int TIFF_Write16(char* fname, COLOUR16* image, int width, int height)
     // rowsperstrip = TIFFDefaultStripSize(tptr,rowsperstrip);
     TIFFSetField(tptr, TIFFTAG_ROWSPERSTRIP, rowsperstrip);
 
-    for (row = 0; row < height; row++)
+    for (row = 0; row < (unsigned int)height; row++)
         TIFFWriteEncodedStrip(tptr, row, &(image[row * width]), 3 * 2 * width);
 
     TIFFClose(tptr);
@@ -2084,8 +2073,8 @@ int TIFF_Write16(char* fname, COLOUR16* image, int width, int height)
 int TIFF_Write32(char* fname, COLOUR32* image, int width, int height)
 {
     TIFF* tptr = NULL;
-    uint32 rowsperstrip = 0;
-    uint32 row;
+    uint32_t rowsperstrip = 0;
+    uint32_t row;
     int rows_to_write;
 
     if ((tptr = TIFFOpen(fname, "w")) == NULL)
@@ -2104,8 +2093,8 @@ int TIFF_Write32(char* fname, COLOUR32* image, int width, int height)
     rowsperstrip = TIFFDefaultStripSize(tptr, rowsperstrip);
     TIFFSetField(tptr, TIFFTAG_ROWSPERSTRIP, rowsperstrip);
 
-    for (row = 0; row < height; row += rowsperstrip) {
-        if (row + rowsperstrip > height)
+    for (row = 0; row < (unsigned int)height; row += rowsperstrip) {
+        if (row + rowsperstrip > (unsigned int)height)
             rows_to_write = height - row;
         else
             rows_to_write = rowsperstrip;
@@ -2122,8 +2111,8 @@ int TIFF_Write32(char* fname, COLOUR32* image, int width, int height)
 */
 int TIFF_Info(char* fname, int* width, int* height, int* depth, int* bits)
 {
-    uint32 w, h;
-    uint16 d, s;
+    uint32_t w, h;
+    uint16_t d, s;
     TIFF* tptr;
 
     TIFFSetErrorHandler(NULL);
@@ -2150,11 +2139,9 @@ int TIFF_Info(char* fname, int* width, int* height, int* depth, int* bits)
 */
 int TIFF_Read(char* fname, BITMAP4* image)
 {
-    int i, j;
-    int index;
     TIFF* tptr;
-    uint32 w, h;
-    uint32* raster = NULL;
+    uint32_t w, h;
+    uint32_t* raster = NULL;
 
     // Open file
     if ((tptr = TIFFOpen(fname, "r")) == NULL)
@@ -2163,13 +2150,13 @@ int TIFF_Read(char* fname, BITMAP4* image)
     TIFFGetField(tptr, TIFFTAG_IMAGEWIDTH, &w);
     TIFFGetField(tptr, TIFFTAG_IMAGELENGTH, &h);
 
-    if ((raster = (uint32*)_TIFFmalloc(w * h * sizeof(uint32))) == NULL)
+    if ((raster = (uint32_t*)_TIFFmalloc(w * h * sizeof(uint32_t))) == NULL)
         return (FALSE);
 
     if (TIFFReadRGBAImage(tptr, w, h, raster, 0) == 1) {
-        for (j = 0; j < h; j++) {
-            for (i = 0; i < w; i++) {
-                index = j * w + i;
+        for (uint32_t j = 0; j < h; j++) {
+            for (uint32_t i = 0; i < w; i++) {
+                uint32_t index = j * w + i;
                 image[index].r = (raster[index]) % 256;
                 image[index].g = (raster[index] >> 8) % 256;
                 image[index].b = (raster[index] >> 16) % 256;
@@ -2195,11 +2182,10 @@ int TIFF_Read(char* fname, BITMAP4* image)
 // Note alpha=1 is opaque, 0 is transparent
 int IsEXR(char* fname)
 {
-    int i;
     char s[256];
 
     strcpy(s, fname);
-    for (i = 0; i < strlen(s); i++)
+    for (size_t i = 0; i < strlen(s); i++)
         if (s[i] >= 'A' && s[i] <= 'Z')
             s[i] += ('a' - 'A');
 

@@ -36,7 +36,7 @@ int main(int argc, char** argv)
     double x, y, dx, dy, x0, y0, longitude, latitude;
     UV uv;
     COLOUR16 csum, czero = {0, 0, 0};
-    BITMAP4 c, black = {0, 0, 0};
+    BITMAP4 c, black = {0, 0, 0, 0};
     double starttime;
     FILE* fptr;
 
@@ -456,7 +456,7 @@ BITMAP4 GetColour(int face, UV uv, BITMAP4* frame1, BITMAP4* frame2)
     int x0, w;
     double alpha, duv;
     UV uvleft, uvright;
-    BITMAP4 c = {0, 0, 0}, c1, c2;
+    BITMAP4 c = {0, 0, 0, 0}, c1, c2;
 
     // Rotate u,v counterclockwise by 90 degrees for lower frame
     if (face == DOWN || face == BACK || face == TOP)
@@ -637,9 +637,9 @@ double GetRunTime(void)
 */
 int CheckTemplate(char* s, int nexpect)
 {
-    int i, n = 0;
+    int n = 0;
 
-    for (i = 0; i < strlen(s); i++) {
+    for (size_t i = 0; i < strlen(s); i++) {
         if (s[i] == '%')
             n++;
     }
