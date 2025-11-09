@@ -1,5 +1,3 @@
-#pragma once
-
 #include "bitmaplib.h"
 
 #include <math.h>
@@ -38,6 +36,7 @@ typedef struct {
     int framewidth, frameheight;
     int antialias, antialias2;
     int nstart, nstop;
+    int nthreads;
     PLANE faces[6];
     char outfilename[256];
     int debug;
@@ -52,6 +51,7 @@ typedef struct {
 } FRAMESPECS;
 
 // Prototypes
+int ProcessFrames(void* user_data);
 int CheckFrames(char*, char*, int*, int*);
 int WriteSpherical(char*, int, BITMAP4*, int, int);
 int ReadFrame(BITMAP4*, char*, int, int);

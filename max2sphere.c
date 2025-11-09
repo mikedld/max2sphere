@@ -1,5 +1,12 @@
 #include "max2sphere.h"
 
+#ifdef _MSC_VER
+#include "winthreads.h"
+#else
+#include <stdatomic.h>
+#include <threads.h>
+#endif
+
 /*
    Convert a sequence of pairs of frames from the GoPro Max camera to an equirectangular
    Sept 08: First version based upon cube2sphere
@@ -27,28 +34,30 @@ typedef struct {
 
 LLTABLE* lltable = NULL;
 int ntable = 0;
-int itable = 0;
+
+char* argv_progname = NULL;
+char* argv_seqtpl = NULL;
+atomic_int ncurr;
+mtx_t print_mtx;
 
 int main(int argc, char** argv)
 {
-    int i, j, index, face, aj, ai, nframe, n = 0;
+    int i, j, aj, ai, n = 0;
+    int itable;
     char fname1[256], fname2[256], tablename[256];
     double x, y, dx, dy, x0, y0, longitude, latitude;
-    UV uv;
-    COLOUR16 csum, czero = {0, 0, 0};
-    BITMAP4 c, black = {0, 0, 0, 0};
-    double starttime;
     FILE* fptr;
 
-    // Memory for images, 2 input frames and one output equirectangular
-    BITMAP4 *frame1 = NULL, *frame2 = NULL, *spherical = NULL;
+    argv_progname = argv[0];
+    argv_seqtpl = argv[argc - 1];
+    mtx_init(&print_mtx, mtx_plain);
 
     // Default settings
     Init();
 
     // Check and parse command line
     if (argc < 2)
-        GiveUsage(argv[0]);
+        GiveUsage(argv_progname);
     for (i = 1; i < argc - 1; i++) {
         if (strcmp(argv[i], "-w") == 0) {
             params.outwidth = atoi(argv[i + 1]);
@@ -63,13 +72,15 @@ int main(int argc, char** argv)
             params.nstart = atoi(argv[i + 1]);
         } else if (strcmp(argv[i], "-m") == 0) {
             params.nstop = atoi(argv[i + 1]);
+        } else if (strcmp(argv[i], "-j") == 0) {
+            params.nthreads = atoi(argv[i + 1]);
         } else if (strcmp(argv[i], "-d") == 0) {
             params.debug = TRUE;
         }
     }
 
     // Check filename templates
-    if (!CheckTemplate(argv[argc - 1], 2)) // Fatal
+    if (!CheckTemplate(argv_seqtpl, 2)) // Fatal
         exit(-1);
     if (strlen(params.outfilename) > 2) {
         if (!CheckTemplate(params.outfilename, 1)) // Delete user selected output filename template
@@ -77,26 +88,18 @@ int main(int argc, char** argv)
     }
 
     // Check the first frame to determine template and frame sizes
-    sprintf(fname1, argv[argc - 1], 0, params.nstart);
-    sprintf(fname2, argv[argc - 1], 5, params.nstart);
+    sprintf(fname1, argv_seqtpl, 0, params.nstart);
+    sprintf(fname2, argv_seqtpl, 5, params.nstart);
     if ((whichtemplate = CheckFrames(fname1, fname2, &params.framewidth, &params.frameheight)) < 0)
         exit(-1);
     if (params.debug) {
-        fprintf(stderr, "%s() - frame dimensions: %d x %d\n", argv[0], params.framewidth, params.frameheight);
-        fprintf(stderr, "%s() - Expect frame template %d\n", argv[0], whichtemplate + 1);
+        fprintf(stderr, "%s() - frame dimensions: %d x %d\n", argv_progname, params.framewidth, params.frameheight);
+        fprintf(stderr, "%s() - Expect frame template %d\n", argv_progname, whichtemplate + 1);
     }
 
-    // Malloc images
-    frame1 = Create_Bitmap(params.framewidth, params.frameheight);
-    frame2 = Create_Bitmap(params.framewidth, params.frameheight);
     if (params.outwidth < 0) {
         params.outwidth = template[whichtemplate].equiwidth;
         params.outheight = params.outwidth / 2;
-    }
-    spherical = Create_Bitmap(params.outwidth, params.outheight);
-    if (frame1 == NULL || frame2 == NULL || spherical == NULL) {
-        fprintf(stderr, "%s() - Failed to malloc memory for the images\n", argv[0]);
-        exit(-1);
     }
 
     // Does a table exist? If it does load it, if not create it and save it
@@ -105,15 +108,15 @@ int main(int argc, char** argv)
     sprintf(tablename, "%d_%d_%d_%d.data", whichtemplate, params.outwidth, params.outheight, params.antialias);
     if ((fptr = fopen(tablename, "r")) != NULL) {
         if (params.debug)
-            fprintf(stderr, "%s() - Reading lookup table\n", argv[0]);
+            fprintf(stderr, "%s() - Reading lookup table\n", argv_progname);
         if ((n = fread(lltable, sizeof(LLTABLE), ntable, fptr)) != ntable) {
-            fprintf(stderr, "%s() - Failed to read lookup table \"%s\" (%d != %d)\n", argv[0], tablename, n, ntable);
+            fprintf(stderr, "%s() - Failed to read lookup table \"%s\" (%d != %d)\n", argv_progname, tablename, n, ntable);
         }
         fclose(fptr);
     }
     if (n != ntable) {
         if (params.debug)
-            fprintf(stderr, "%s() - Generating lookup table\n", argv[0]);
+            fprintf(stderr, "%s() - Generating lookup table\n", argv_progname);
         dx = params.antialias * params.outwidth;
         dy = params.antialias * params.outheight;
         itable = 0;
@@ -134,33 +137,89 @@ int main(int argc, char** argv)
             }
         }
         if (params.debug)
-            fprintf(stderr, "%s() - Saving lookup table\n", argv[0]);
+            fprintf(stderr, "%s() - Saving lookup table\n", argv_progname);
         fptr = fopen(tablename, "w");
         fwrite(lltable, ntable, sizeof(LLTABLE), fptr);
         fclose(fptr);
     }
 
+    ncurr = params.nstart;
+    if (params.nthreads < 1)
+        params.nthreads = 1;
+    if (params.nthreads > 256)
+        params.nthreads = 256;
+    if (params.nthreads > 1) {
+        thrd_t* thr = calloc(params.nthreads, sizeof(thrd_t));
+        int ec = 0;
+        for (i = 0; i < params.nthreads; ++i)
+            thrd_create(&thr[i], &ProcessFrames, NULL);
+        for (i = 0; i < params.nthreads; ++i) {
+            int terr = 0;
+            thrd_join(thr[i], &terr);
+            if (terr > ec)
+                ec = terr;
+        }
+        free(thr);
+        return ec;
+    } else {
+        return ProcessFrames(NULL);
+    }
+}
+
+int ProcessFrames(void* user_data)
+{
+    int i, j, aj, ai, index, face, nframe;
+    int itable;
+    char fname1[256], fname2[256];
+    UV uv;
+    COLOUR16 csum, czero = {0, 0, 0};
+    BITMAP4 c, black = {0, 0, 0, 0};
+    double starttime;
+
+    // Memory for images, 2 input frames and one output equirectangular
+    BITMAP4 *frame1 = NULL, *frame2 = NULL, *spherical = NULL;
+
+    (void)user_data;
+
+    // Malloc images
+    frame1 = Create_Bitmap(params.framewidth, params.frameheight);
+    frame2 = Create_Bitmap(params.framewidth, params.frameheight);
+    spherical = Create_Bitmap(params.outwidth, params.outheight);
+    if (frame1 == NULL || frame2 == NULL || spherical == NULL) {
+        mtx_lock(&print_mtx);
+        fprintf(stderr, "%s() - Failed to malloc memory for the images\n", argv_progname);
+        mtx_unlock(&print_mtx);
+        return 1;
+    }
+
     // Process each frame of the sequence
-    for (nframe = params.nstart; nframe <= params.nstop; nframe++) {
+    for (;;) {
+        nframe = atomic_fetch_add_explicit(&ncurr, 1, memory_order_relaxed);
+        if (nframe > params.nstop)
+            break;
+
         // Form the spherical map
-        if (params.debug)
-            fprintf(stderr, "%s() - Creating spherical map for frame %d\n", argv[0], nframe);
+        if (params.debug) {
+            mtx_lock(&print_mtx);
+            fprintf(stderr, "%s() - Creating spherical map for frame %d\n", argv_progname, nframe);
+            mtx_unlock(&print_mtx);
+        }
         Erase_Bitmap(spherical, params.outwidth, params.outheight, black);
 
         // Read both frames
-        sprintf(fname1, argv[argc - 1], 0, nframe);
-        sprintf(fname2, argv[argc - 1], 5, nframe);
+        sprintf(fname1, argv_seqtpl, 0, nframe);
+        sprintf(fname2, argv_seqtpl, 5, nframe);
         if (!ReadFrame(frame1, fname1, params.framewidth, params.frameheight))
-            exit(-1);
+            return 1;
         if (!ReadFrame(frame2, fname2, params.framewidth, params.frameheight))
-            exit(-1);
+            return 1;
 
         starttime = GetRunTime();
         itable = 0;
         for (j = 0; j < params.outheight; j++) {
             // y0 = j / (double)params.outheight;
             // if (params.debug && j % (params.outheight / 32) == 0)
-            //     fprintf(stderr, "%s() - Scan line %d\n", argv[0], j);
+            //     fprintf(stderr, "%s() - Scan line %d\n", argv_progname, j);
 
             for (i = 0; i < params.outwidth; i++) {
                 // x0 = i / (double)params.outwidth;
@@ -196,17 +255,23 @@ int main(int argc, char** argv)
                 spherical[index].b = csum.b / params.antialias2;
             }
         }
-        if (params.debug)
-            fprintf(stderr, "%s() - Processing time: %g seconds\n", argv[0], GetRunTime() - starttime);
+        if (params.debug) {
+            mtx_lock(&print_mtx);
+            fprintf(stderr, "%s() - Processing time: %g seconds\n", argv_progname, GetRunTime() - starttime);
+            mtx_unlock(&print_mtx);
+        }
 
         // Write out the equirectangular
         // Base the name on the name of the first frame
-        if (params.debug)
-            fprintf(stderr, "%s() - Saving equirectangular\n", argv[0]);
+        if (params.debug) {
+            mtx_lock(&print_mtx);
+            fprintf(stderr, "%s() - Saving equirectangular\n", argv_progname);
+            mtx_unlock(&print_mtx);
+        }
         WriteSpherical(fname1, nframe, spherical, params.outwidth, params.outheight);
     }
 
-    exit(0);
+    return 0;
 }
 
 /*
@@ -582,6 +647,7 @@ void Init(void)
     params.antialias2 = 4; // antialias squared
     params.nstart = 0;
     params.nstop = 100000;
+    params.nthreads = 1;
     params.outfilename[0] = '\0';
     params.debug = FALSE;
 
@@ -675,6 +741,7 @@ void GiveUsage(char* s)
     fprintf(stderr, "             If specified then it should contain one %%d field for the frame number\n");
     fprintf(stderr, "   -n n      Start index for the sequence, default: %d\n", params.nstart);
     fprintf(stderr, "   -m n      End index for the sequence, default: %d\n", params.nstop);
+    fprintf(stderr, "   -j n      Number of threads for parallel processing, default: %d\n", params.nthreads);
     fprintf(stderr, "   -d        Enable debug mode, default: off\n");
     exit(-1);
 }

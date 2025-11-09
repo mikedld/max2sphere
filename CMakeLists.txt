@@ -26,6 +26,8 @@ add_executable(max2sphere
     bitmaplib.h
     max2sphere.c
     max2sphere.h
+    $<$<BOOL:${MSVC}>:winthreads.c>
+    $<$<BOOL:${MSVC}>:winthreads.h>
     $<$<BOOL:${MSVC}>:wintime.c>
     $<$<BOOL:${MSVC}>:wintime.h>)
 
