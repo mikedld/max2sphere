@@ -1,6 +1,6 @@
 #include "wintime.h"
 
-int gettimeofday(struct timeval *tv, struct timezone *tz)
+int gettimeofday(struct timeval* tv, struct timezone* tz)
 {
     if (tv) {
         FILETIME filetime;

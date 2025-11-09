@@ -6,6 +6,14 @@ env:
   VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/_vcpkg_cache
 
 jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: curl -L https://github.com/muttleyxd/clang-tools-static-binaries/releases/download/master-796e77c/clang-format-20_linux-amd64 -o /tmp/clang-format
+      - run: chmod +x /tmp/clang-format
+      - run: /tmp/clang-format -i *.c *.h
+      - run: git diff --exit-code
   build:
     strategy:
       matrix:
@@ -24,14 +32,9 @@ jobs:
       - uses: actions/checkout@v5
       - run: mkdir _vcpkg_cache
       - uses: actions/cache@v4
-        env:
-          cache_name: vcpkg
         with:
           path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
-          key: ${{ runner.os }}-build-${{ env.cache_name }}-${{ hashFiles('vcpkg.cmake', 'vcpkg.json') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache_name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
-      - run: cmake -S . -B _build -DCMAKE_BUILD_TYPE=Release -DM2S_ENABLE_JPEG=ON -DM2S_ENABLE_PNG=ON -DM2S_ENABLE_TIFF=ON -DM2S_ENABLE_EXR=ON ${{ matrix.cmake_args }}
+          key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.cmake', 'vcpkg.json') }}
+          restore-keys: ${{ runner.os }}-vcpkg-
+      - run: cmake -S . -B _build -DCMAKE_BUILD_TYPE=Release -DENABLE_JPEG=ON -DENABLE_PNG=ON -DENABLE_TIFF=ON -DENABLE_EXR=ON ${{ matrix.cmake_args }}
       - run: cmake --build _build --config Release

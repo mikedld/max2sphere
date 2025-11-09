@@ -1,0 +1,28 @@
+BasedOnStyle: Microsoft
+
+AlignAfterOpenBracket: AlwaysBreak
+AlignEscapedNewlines: DontAlign
+AlignOperands: DontAlign
+AlignTrailingComments: false
+AllowAllArgumentsOnNextLine: true
+AllowShortFunctionsOnASingleLine: Empty
+BinPackArguments: false
+BinPackParameters: false
+BreakBeforeBraces: Linux
+ColumnLimit: 128
+InsertNewlineAtEOF: true
+KeepEmptyLines:
+  AtEndOfFile: true
+  AtStartOfBlock: false
+  AtStartOfFile: false
+PointerAlignment: Left
+QualifierAlignment: Left
+SeparateDefinitionBlocks: Always
+
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: "^<"
+    Priority: 2
+  - Regex: ".*"
+    Priority: 1
+SortIncludes: CaseInsensitive
