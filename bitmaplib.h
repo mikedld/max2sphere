@@ -3,12 +3,6 @@
 #include <string.h>
 #include <math.h>
 
-// Choose formats with external support required
-#define ADDJPEG 
-//#define ADDPNG 
-//#define ADDTIFF 
-//#define ADDEXR
-
 #ifdef ADDJPEG
 #include <jpeglib.h>
 #endif

@@ -1,0 +1,10 @@
+{
+  "name": "max2sphere",
+  "version-string": "0",
+  "dependencies": [
+    "libjpeg-turbo",
+    "libpng",
+    "openexr",
+    "tiff"
+  ]
+}
