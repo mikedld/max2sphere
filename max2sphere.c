@@ -340,8 +340,8 @@ int FindFaceUV(double longitude, double latitude, UV* uv)
 {
     int k, found = -1;
     double mu, denom, coslatitude, fourdivpi;
-    UV fuv;
-    XYZ p, q;
+    UV fuv = {};
+    XYZ p = {}, q = {};
 
     fourdivpi = 4.0 / M_PI;
 

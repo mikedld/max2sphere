@@ -13,8 +13,10 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
 if(MSVC)
-    add_compile_definitions(_USE_MATH_DEFINES) # M_PI
-    add_compile_options(/W4)
+    add_compile_definitions(
+        _CRT_SECURE_NO_WARNINGS
+        _USE_MATH_DEFINES) # M_PI
+    add_compile_options(/W4 /wd4244 /wd4267 /wd4305)
 else()
     add_compile_options(-Wall -Wextra)
 endif()
