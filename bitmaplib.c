@@ -555,7 +555,7 @@ void GaussianScale(BITMAP4* bm_in, int nx, int ny, BITMAP4* bm_out, int nnx, int
 {
     int i, j, ii, jj, ci, cj;
     long index;
-    double x, y, cx, cy, red, green, blue, alpha, dist2, r2, weight, sum;
+    double x, y, cx, cy, red, green, blue, alpha, dist2, r2, weight;
     BITMAP4 col, black = {0, 0, 0, 255};
 
     r2 = r * r;
@@ -575,7 +575,6 @@ void GaussianScale(BITMAP4* bm_in, int nx, int ny, BITMAP4* bm_out, int nnx, int
                 green = 0;
                 blue = 0;
                 alpha = 0;
-                sum = 0;
                 for (x = cx - 4 * r; x <= cx + 4 * r + 0.01; x++) {
                     for (y = cy - 4 * r; y <= cy + 4 * r + 0.01; y++) {
                         ii = (int)x;
@@ -595,7 +594,6 @@ void GaussianScale(BITMAP4* bm_in, int nx, int ny, BITMAP4* bm_out, int nnx, int
                         green += weight * bm_in[index].g;
                         blue += weight * bm_in[index].b;
                         alpha += weight * bm_in[index].a;
-                        sum += weight;
                     }
                 }
                 col.r = (int)red;
